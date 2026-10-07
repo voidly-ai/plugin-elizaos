@@ -1,0 +1,62 @@
+{
+  "name": "@voidly/plugin-elizaos",
+  "version": "0.1.0",
+  "description": "Voidly public discovery and optional host-approved wallet-kit actions for ElizaOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/voidly-ai/plugin-elizaos"
+  },
+  "homepage": "https://github.com/voidly-ai/plugin-elizaos#readme",
+  "bugs": {
+    "url": "https://github.com/voidly-ai/plugin-elizaos/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "audit:pack": "npm test && node scripts/check-packed-tarball.mjs",
+    "prepack": "npm test"
+  },
+  "peerDependencies": {
+    "@elizaos/core": "2.0.3-beta.7",
+    "@voidly/agent-wallet": "0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@voidly/agent-wallet": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@elizaos/core": "2.0.3-beta.7",
+    "@voidly/agent-wallet": "0.2.0",
+    "typescript": "5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "keywords": [
+    "voidly",
+    "elizaos",
+    "plugin",
+    "public-discovery",
+    "wallet-kit",
+    "host-approval"
+  ]
+}

@@ -1,0 +1,71 @@
+name: Publish ElizaOS plugin with provenance
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: plugin-elizaos-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ github.repository == 'voidly-ai/plugin-elizaos' }}
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Verify repository, tag, lockfile, and unused version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          const expectedRepo = 'voidly-ai/plugin-elizaos';
+          const expectedPackage = '@voidly/plugin-elizaos';
+          if (process.env.GITHUB_REPOSITORY !== expectedRepo ||
+              pkg.repository?.type !== 'git' ||
+              pkg.repository?.url !== `https://github.com/${expectedRepo}`) {
+            throw new Error('Source repository identity mismatch');
+          }
+          if (pkg.name !== expectedPackage || pkg.publishConfig?.access !== 'public') {
+            throw new Error('npm package identity or access mismatch');
+          }
+          if (lock.name !== pkg.name || lock.version !== pkg.version ||
+              lock.packages?.['']?.name !== pkg.name ||
+              lock.packages?.['']?.version !== pkg.version) {
+            throw new Error('Lockfile identity or version mismatch');
+          }
+          if (process.env.RELEASE_TAG !== `v${pkg.version}`) {
+            throw new Error('Tag must match package version');
+          }
+          const url = `https://registry.npmjs.org/@voidly%2fplugin-elizaos/${encodeURIComponent(pkg.version)}`;
+          const response = await fetch(url, {
+            headers: { accept: 'application/json' },
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (response.status === 200) throw new Error(`npm version ${pkg.version} already exists`);
+          if (response.status !== 404) throw new Error(`Cannot verify npm version absence: HTTP ${response.status}`);
+          await response.body?.cancel();
+          NODE
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test and audit publish tarball
+        run: npm run audit:pack
+      - name: Publish through npm trusted publisher with provenance
+        run: npm publish --provenance --access public
